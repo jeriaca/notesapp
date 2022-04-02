@@ -18,7 +18,8 @@ import 'antd/dist/antd.css';
 import { listNotes } from './graphql/queries';
 import { 
   createNote as CreateNote, 
-  deleteNote as DeleteNote
+  deleteNote as DeleteNote,
+  updateNote as UpdateNote
 } from './graphql/mutations'
 
 const CLIENT_ID = uuid();
@@ -112,6 +113,7 @@ const App = () => {
   []
   );
 
+//create note
   const createNote = async() => {
 
     //Destructuring
@@ -154,6 +156,7 @@ const App = () => {
     }
   };
 
+//delete note
   const deleteNote = async (noteToDelete) => {
     
     //Optimistic update state and screen
@@ -170,6 +173,36 @@ const App = () => {
           input: { 
             id: noteToDelete.id 
           } 
+        }
+      });
+    }
+
+    catch (err) {
+      console.error(err);
+    }
+  };
+
+//Update note
+  const updateNote = async (noteToUpdate) => {
+    
+    //Update state and display optimistically
+    dispatch({
+      type: "SET_NOTES",
+      notes: state.notes.map(x => ({
+        ...x,
+        completed: x === noteToUpdate ? !x.completed : x.completed
+      }))
+    });
+
+    //call the backend
+    try {
+      await API.graphql({
+        query: UpdateNote, 
+        variables: {
+          input: {
+            id: noteToUpdate.id,
+            completed: !noteToUpdate.completed
+          }
         }
       });
     }
@@ -197,11 +230,17 @@ const App = () => {
             onClick={() => deleteNote(item)}
           >
             Delete
+          </p>,
+          <p
+            style={styles.p}
+            onClick={() => updateNote(item)}
+          >
+            {item.completed ? 'Mark incomplete' : 'Mark complete'}
           </p>  
         ]}
       >
         <List.Item.Meta
-            title={item.name}
+            title={`${item.name}${item.completed ? ' (completed) ' : ''}`}
             description={item.description}
         />
       </List.Item>
