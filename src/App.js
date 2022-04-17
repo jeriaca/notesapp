@@ -15,6 +15,7 @@ import {
 } from 'antd';
 import 'antd/dist/antd.css';
 
+import { onCreateNote } from './graphql/subscriptions';
 import { listNotes } from './graphql/queries';
 import { 
   createNote as CreateNote, 
@@ -87,7 +88,7 @@ const App = () => {
 
   const [state, dispatch] = useReducer(reducer, initialState);
 
-  const fetchNotes = async() => {
+  const fetchNotes = async () => {
     try {
       const notesData = await API.graphql({
         query: listNotes
@@ -108,13 +109,29 @@ const App = () => {
 
   useEffect(
     () => {
-      fetchNotes()
-    }, 
-  []
+      fetchNotes();
+
+      const subscription = API.graphql({
+        query: onCreateNote
+    }).subscribe({
+        next: noteData => {
+          const note = noteData.value.data.onCreateNote;
+          if (CLIENT_ID === note.clientID) return;
+          dispatch({ 
+            type: 'ADD_NOTE', 
+            note: note 
+          });
+        }
+      });
+
+      // Pass a clean up function to React  
+      return () => subscription.unsubscribe();
+    } 
+    , []
   );
 
-//create note
-  const createNote = async() => {
+  //create note
+  const createNote = async () => {
 
     //Destructuring
     const { form } = state;
@@ -190,7 +207,8 @@ const App = () => {
       type: "SET_NOTES",
       notes: state.notes.map(x => ({
         ...x,
-        completed: x === noteToUpdate ? !x.completed : x.completed
+        //completed: x === noteToUpdate ? !x.completed : x.completed
+        completed: x === noteToUpdate ? !noteToUpdate.completed : noteToUpdate.completed
       }))
     });
 
